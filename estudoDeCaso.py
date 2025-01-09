@@ -68,16 +68,19 @@ data = {
 
 dataset = pd.DataFrame(data)
 
-df_sex = dataset.groupby(['sexo', 'NUM']).size().reset_index(name="quantidade")
-df_sex["sexo"] = df_sex["sexo"].map({1: "Homem", 0: "Mulher"})
-df_sex["NUM"] = df_sex["NUM"].map({0: "Sadio", 1: "Doente"})
+# Criando o DataFrame com quantidade
+df_sex = dataset.groupby(['sexo', 'NUM']).size().reset_index(name='quantidade')
 
-combinacoes = pd.MultiIndex.from_product([['Mulher', 'Homem'], ['Sadio', 'Doente']], names=['sexo', 'NUM'])
+# Garantindo todas as combinações possíveis
+combinacoes = pd.MultiIndex.from_product([['Mulher', 'Homem'], ['sadio', 'doente']], names=['sexo', 'NUM'])
 df_sex = df_sex.set_index(['sexo', 'NUM']).reindex(combinacoes, fill_value=0).reset_index()
+
 print(df_sex)
 
 # Gráfico de pizza
-labels = df_sex.apply(lambda row: f"{row['sexo']},{row['NUM']}", axis=1)
-
-plt.pie(df_sex["quantidade"], labels=labels, autopct='%1.1f%%', radius=1.5, textprops={"fontsize": 16})
-plt.show()
+if df_sex["quantidade"].sum() > 0:
+    labels = df_sex.apply(lambda row: f"{row['sexo']}, {row['NUM']}", axis=1)
+    plt.pie(df_sex["quantidade"], labels=labels, autopct='%1.1f%%', radius=1.5, textprops={"fontsize": 16})
+    plt.show()
+else:
+    print("Não há dados suficientes para gerar o gráfico de pizza.")
