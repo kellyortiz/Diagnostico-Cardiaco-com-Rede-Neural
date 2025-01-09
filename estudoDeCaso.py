@@ -1,5 +1,10 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.neural_network import MLPClassifier
+from sklearn.metrics import confusion_matrix, classification_report
 
 # Dicionários
 sexo_descricao = {1: "Homem", 0: "Mulher"}
@@ -27,7 +32,7 @@ CA = [0, 0, 0, 0, 0]
 TAL = [1, 3, 3, 3, 3]
 NUM = [1, 1, 1, 1, 1]
 
-# Função
+# Função de transformação e validação
 def transformar(lista, descricao, valores_validos=None):
     transformados = []
     for val in lista:
@@ -37,7 +42,7 @@ def transformar(lista, descricao, valores_validos=None):
             transformados.append(descricao.get(val, "Desconhecido"))
     return transformados
 
-# Validação
+# Validação e transformação das listas
 sexo_transformado = transformar(sexo, sexo_descricao, valores_validos=[0, 1])
 asj_transformado = transformar(ASJ, asj_descricao, valores_validos=[0, 1])
 dor_peito_transformado = transformar(dor_peito, dor_peito_descricao, valores_validos=[0, 1, 2, 3, 4])
@@ -48,7 +53,7 @@ CA_validado = transformar(CA, TAL_descricao, valores_validos=[0, 1, 2, 3])
 TAL_validado = transformar(TAL, TAL_descricao, valores_validos=[3, 6, 7])
 NUM_transformado = transformar(NUM, NUM_descricao, valores_validos=[0, 1])
 
-# DataFrame
+# Criando DataFrame
 data = {
     "idade": idades,
     "sexo": sexo_transformado,
@@ -68,13 +73,12 @@ data = {
 
 dataset = pd.DataFrame(data)
 
-# Criando o DataFrame com quantidade
+# Agrupando e garantindo todas as combinações possíveis
 df_sex = dataset.groupby(['sexo', 'NUM']).size().reset_index(name='quantidade')
-
-# Garantindo todas as combinações possíveis
-combinacoes = pd.MultiIndex.from_product([['Mulher', 'Homem'], ['sadio', 'doente']], names=['sexo', 'NUM'])
+combinacoes = pd.MultiIndex.from_product([["Mulher", "Homem"], ["sadio", "doente"]], names=['sexo', 'NUM'])
 df_sex = df_sex.set_index(['sexo', 'NUM']).reindex(combinacoes, fill_value=0).reset_index()
 
+# Exibindo o DataFrame com as combinações
 print(df_sex)
 
 # Gráfico de pizza
@@ -84,3 +88,40 @@ if df_sex["quantidade"].sum() > 0:
     plt.show()
 else:
     print("Não há dados suficientes para gerar o gráfico de pizza.")
+
+# Modelagem de Machine Learning
+
+# Preparando os dados para o modelo
+X = np.array(list(zip(idades, sexo, PA_rep, Col_serico, MFC, DEPSTEX, INCLI, TAL)))
+y = np.array(NUM)
+
+# Dividindo os dados em treino e teste
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
+
+# Criando e treinando o modelo
+modelo = MLPClassifier(hidden_layer_sizes=(10,), max_iter=1000, random_state=42)
+modelo.fit(X_train, y_train)
+
+# Prevendo e avaliando o modelo
+y_pred = modelo.predict(X_test)
+
+# Matriz de Confusão
+cm = confusion_matrix(y_test, y_pred, labels=[0, 1])
+print("\nMatriz de Confusão:")
+print(cm)
+
+# Gráfico da matriz de confusão
+plt.figure(figsize=(8, 6))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=["Sadio", "Doente"], yticklabels=["Sadio", "Doente"])
+plt.xlabel('Predito')
+plt.ylabel('Real')
+plt.title('Matriz de Confusão')
+plt.show()
+
+# Relatório de Classificação
+print("\nRelatório de Classificação:")
+print(classification_report(y_test, y_pred, target_names=["Sadio", "Doente"], labels=[0, 1], zero_division=0))
+
+# Precisão
+accuracy = np.mean(y_test == y_pred) * 100
+print(f"\nPrecisão: {accuracy:.2f}%")
